@@ -1,0 +1,76 @@
+<div class="planning-board-wrapper">
+  <h1 class="typewriter">Spyfall</h1>
+  <div class="split-line fade-in-delayed-2s"></div>
+
+  <div class="participants fade-in-delayed-2s">
+    @for(p of participants; track p.id) {
+
+    <app-participant-card
+      [participant]="p"
+      [isRevealed]="isRevealed"
+      [isHighlighted]="p.id === selectedParticipantId"
+      (click)="selectParticipant(p.id)"
+    ></app-participant-card>
+    }
+  </div>
+  <div class="split-line fade-in-delayed-2s"></div>
+  @if(currentParticipant) {
+  <div class="vote-section fade-in-delayed-3s">
+    <div class="vote-options fade-in-delayed-3s">
+      @for(option of locationOptions; track option) {
+      <div
+        (click)="toggleCross(option)"
+        [class.crossed]="crossedLocations.has(option)"
+      >
+        {{ option }}
+      </div>
+      }
+    </div>
+  </div>
+  } @if (isRevealed && numericVotes.length > 0) {
+  <div class="vote-summary fade-in-delayed-2s">
+    <div class="extreme-vote">
+      Lowest:
+      <div [@voteReveal]>
+        <strong>&nbsp;{{ lowestVote }}</strong>
+      </div>
+    </div>
+    <div class="extreme-vote">
+      Highest:
+      <div [@voteReveal]>
+        <strong>&nbsp;{{ highestVote }}</strong>
+      </div>
+    </div>
+  </div>
+  }
+
+  <div class="button-wrapper fade-in-delayed-2s">
+    @if (currentParticipant?.isOwner) { @if (isRevealed) {
+    <button (click)="newRound()">New Round</button>
+    } @else {
+    <button (click)="reveal()">Reveal</button>
+    }}
+    <button (click)="getJoinLink()">Copy link</button>
+  </div>
+</div>
+@if (currentParticipant?.isOwner) {
+<div
+  class="settings-dropdown-container"
+  (clickOutside)="isDropdownOpen = false"
+>
+  <button class="settings-button" (click)="isDropdownOpen = !isDropdownOpen">
+    ⚙️
+  </button>
+
+  @if (isDropdownOpen) {
+  <div class="dropdown-menu">
+    <button (click)="setLocationType('da'); isDropdownOpen = false">
+      Dansk
+    </button>
+    <button (click)="setLocationType('en'); isDropdownOpen = false">
+      English
+    </button>
+  </div>
+  }
+</div>
+}

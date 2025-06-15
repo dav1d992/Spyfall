@@ -1,0 +1,11 @@
+.participant-card {
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.participant-card.highlighted {
+  box-shadow: 0 0 0 3px red;
+}

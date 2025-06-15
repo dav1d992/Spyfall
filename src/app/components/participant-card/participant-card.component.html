@@ -1,0 +1,10 @@
+<div class="participant-card" [class.highlighted]="isHighlighted()">
+  <h3>{{ participant().name }}</h3>
+  @if (isRevealed()) { :
+  <div [@voteReveal]>
+    &nbsp;<strong>{{ participant().votedBy?.length ?? "" }}</strong>
+  </div>
+  } @else {
+  <p>{{ participant().hasVoted ? ": ✅" : ": ⌛" }}</p>
+  }
+</div>
