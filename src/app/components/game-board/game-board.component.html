@@ -46,7 +46,7 @@
 
   <div class="button-wrapper fade-in-delayed-2s">
     @if (currentParticipant?.isOwner) { @if (isRevealed) {
-    <button (click)="newRound()">New Round</button>
+    <button (click)="start()">Start</button>
     } @else {
     <button (click)="reveal()">Reveal</button>
     }}

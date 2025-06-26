@@ -4,6 +4,7 @@ export interface Participant {
   isOwner: boolean;
   isSpy: boolean;
   hasVoted: boolean;
-  vote?: string | null;
+  isDead: boolean;
   votedBy?: string[]; // list of participant IDs who voted for this participant
+  vote?: string | null;
 }

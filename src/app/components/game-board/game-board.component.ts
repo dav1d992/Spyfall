@@ -60,7 +60,7 @@ export class GameBoardComponent {
       'Krydstogtskib',
       'Passagertog',
       'Pirat Skib',
-      'Polarforskningsstation',
+      'Polarstation',
       'Politistation',
       'Restaurant',
       'Skole',
@@ -144,18 +144,64 @@ export class GameBoardComponent {
   setLocationType(type: 'da' | 'en') {
     if (!this.sessionId) return;
     this.locationOptions = this.locationPresets[type];
-    // this.service.updateVoteType(this.sessionId, type);
   }
 
   reveal() {
-    if (!this.sessionId) return;
+    // if (!this.sessionId) return;
+    // this.service.reveal(this.sessionId);
 
-    this.service.reveal(this.sessionId);
+    const maxVotes = Math.max(
+      ...this.participants.map((p) => p.votedBy?.length ?? 0)
+    );
+
+    const topParticipants = this.participants.filter(
+      (p) => (p.votedBy?.length ?? 0) === maxVotes
+    );
+
+    if (topParticipants.length > 1) {
+      console.log('TIE, no one dies', topParticipants);
+      this.service
+        .resetVotes(this.sessionId!)
+        .then(() => console.log('All votes reset!'))
+        .catch((error) => console.error(error));
+    } else {
+      this.service
+        .updateParticipant(this.sessionId!, topParticipants[0].id, {
+          isDead: false,
+        })
+        .then(() => {
+          console.log('This one died:', topParticipants[0]);
+        });
+
+      if (topParticipants[0].isSpy) {
+        console.log('The innocent won:', topParticipants[0]);
+      } else {
+        if (
+          this.participants.filter((participant) => !participant.isDead)
+            .length === 1
+        ) {
+          console.log(
+            'The Spy has won. Congrats',
+            this.participants.find((participant) => participant.isSpy)
+          );
+        } else {
+          console.log('The Spy is still amongst you. The game continues.');
+          this.service
+            .resetVotes(this.sessionId!)
+            .then(() => console.log('All votes reset!'))
+            .catch((error) => console.error(error));
+        }
+      }
+    }
   }
 
-  newRound() {
+  start() {
     if (!this.sessionId) return;
-    this.service.newRound(this.sessionId);
+
+    this.service
+      .startNewGame(this.sessionId)
+      .then(() => console.log('New game started!'))
+      .catch((err) => console.error(err));
   }
 
   selectParticipant(id: string) {

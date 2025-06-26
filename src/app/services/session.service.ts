@@ -20,7 +20,7 @@ export class SessionService {
     return set(sessionRef, {
       ownerId: sessionId,
       isRevealed: false,
-      voteType: 'dk',
+      voteType: 'da',
     }).then(() => sessionId);
   }
 
@@ -40,6 +40,7 @@ export class SessionService {
       hasVoted: false,
       isOwner,
       isSpy: false,
+      isDead: false,
       votedBy: [],
     } satisfies Participant;
 
@@ -56,14 +57,53 @@ export class SessionService {
     });
   }
 
-  vote(sessionId: string, participantId: string, vote: string): Promise<void> {
-    return update(
-      ref(this.db, `sessions/${sessionId}/participants/${participantId}`),
-      {
-        vote,
-        hasVoted: true,
-      }
+  vote(
+    sessionId: string,
+    participantId: string,
+    voteForId: string
+  ): Promise<void> {
+    const participantRef = ref(
+      this.db,
+      `sessions/${sessionId}/participants/${voteForId}`
     );
+
+    return new Promise((resolve, reject) => {
+      onValue(
+        participantRef,
+        (snapshot) => {
+          const participantData = snapshot.val();
+
+          // Safely get votedBy or default to empty array
+          const votedBy: string[] = participantData?.votedBy ?? [];
+
+          // Append current voter if not already present
+          if (!votedBy.includes(participantId)) {
+            votedBy.push(participantId);
+          }
+
+          // Update vote and hasVoted for the voter
+          const voterRef = ref(
+            this.db,
+            `sessions/${sessionId}/participants/${participantId}`
+          );
+
+          // We update both voter and the voted participant in a batch update
+          const updates: Record<string, any> = {};
+          updates[`sessions/${sessionId}/participants/${participantId}/vote`] =
+            voteForId;
+          updates[
+            `sessions/${sessionId}/participants/${participantId}/hasVoted`
+          ] = true;
+          updates[`sessions/${sessionId}/participants/${voteForId}/votedBy`] =
+            votedBy;
+
+          update(ref(this.db), updates)
+            .then(() => resolve())
+            .catch((err) => reject(err));
+        },
+        { onlyOnce: true }
+      );
+    });
   }
 
   reveal(sessionId: string): Promise<void> {
@@ -105,11 +145,86 @@ export class SessionService {
     });
   }
 
-  updateVoteType(
+  startNewGame(sessionId: string): Promise<void> {
+    const participantsRef = ref(this.db, `sessions/${sessionId}/participants`);
+
+    return new Promise((resolve, reject) => {
+      onValue(
+        participantsRef,
+        (snapshot) => {
+          const data = snapshot.val();
+          if (!data) {
+            resolve();
+            return;
+          }
+
+          const participantIds = Object.keys(data);
+          if (participantIds.length === 0) {
+            resolve();
+            return;
+          }
+
+          // Pick a random participant to be the Spy
+          const spyIndex = Math.floor(Math.random() * participantIds.length);
+          const spyId = participantIds[spyIndex];
+
+          const updates: Record<string, any> = {};
+          for (const id of participantIds) {
+            updates[`sessions/${sessionId}/participants/${id}/isDead`] = false;
+            updates[`sessions/${sessionId}/participants/${id}/vote`] = null;
+            updates[`sessions/${sessionId}/participants/${id}/votedBy`] = [];
+            updates[`sessions/${sessionId}/participants/${id}/isSpy`] =
+              id === spyId;
+          }
+
+          // Reset the revealed status for the session
+          updates[`sessions/${sessionId}/isRevealed`] = false;
+
+          update(ref(this.db), updates).then(resolve).catch(reject);
+        },
+        { onlyOnce: true }
+      );
+    });
+  }
+
+  resetVotes(sessionId: string): Promise<void> {
+    const participantsRef = ref(this.db, `sessions/${sessionId}/participants`);
+
+    return new Promise((resolve, reject) => {
+      onValue(
+        participantsRef,
+        (snapshot) => {
+          const data = snapshot.val();
+          if (!data) {
+            resolve();
+            return;
+          }
+
+          const updates: Record<string, any> = {};
+          for (const participantId of Object.keys(data)) {
+            updates[
+              `sessions/${sessionId}/participants/${participantId}/vote`
+            ] = null;
+            updates[
+              `sessions/${sessionId}/participants/${participantId}/votedBy`
+            ] = [];
+          }
+
+          update(ref(this.db), updates).then(resolve).catch(reject);
+        },
+        { onlyOnce: true }
+      );
+    });
+  }
+
+  updateParticipant(
     sessionId: string,
-    voteType: 'fibonacci' | 'onetoten' | 'double' | 'onetofortynine'
+    participantId: string,
+    changes: Partial<Participant>
   ): Promise<void> {
-    const sessionRef = ref(this.db, `sessions/${sessionId}`);
-    return update(sessionRef, { voteType });
+    return update(
+      ref(this.db, `sessions/${sessionId}/participants/${participantId}`),
+      changes
+    );
   }
 }
