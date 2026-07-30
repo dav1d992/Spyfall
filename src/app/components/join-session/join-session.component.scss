@@ -1,7 +1,54 @@
-.join-section {
+:host {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin: auto;
+}
+
+.card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-top: 3rem;
-  padding: 1rem;
+  gap: 1.1rem;
+  padding: 1.6rem;
+  text-align: center;
+}
+
+.badge {
+  align-self: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+}
+
+h2 {
+  font-size: 1.6rem;
+}
+
+.status {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  font-weight: 500;
 }

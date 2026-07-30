@@ -1,76 +1,312 @@
-<div class="planning-board-wrapper">
-  <h1 class="typewriter">Spyfall</h1>
-  <div class="split-line fade-in-delayed-2s"></div>
+<section class="board fade-up">
+  <!-- Top bar -->
+  <header class="topbar glass">
+    <button class="icon-btn" (click)="leave()" [title]="t().leaveRoom">←</button>
 
-  <div class="participants fade-in-delayed-2s">
-    @for(p of participants; track p.id) {
+    <button class="room" (click)="copyLink()" [title]="t().copyInviteLink">
+      <span class="room-label">{{ t().room }}</span>
+      <span class="room-code">{{ sessionId() }}</span>
+      <span class="copy-hint">{{ copied() ? t().copied : t().tapToCopy }}</span>
+    </button>
 
-    <app-participant-card
-      [participant]="p"
-      [isRevealed]="isRevealed"
-      [isHighlighted]="p.id === selectedParticipantId"
-      (click)="selectParticipant(p.id)"
-    ></app-participant-card>
-    }
-  </div>
-  <div class="split-line fade-in-delayed-2s"></div>
-  @if(currentParticipant) {
-  <div class="vote-section fade-in-delayed-3s">
-    <div class="vote-options fade-in-delayed-3s">
-      @for(option of locationOptions; track option) {
-      <div
-        (click)="toggleCross(option)"
-        [class.crossed]="crossedLocations.has(option)"
-      >
-        {{ option }}
+    @if (status() === 'playing' || status() === 'voting') {
+      <div class="timer" [class.up]="timeUp()">
+        <span class="clock">⏱</span>{{ timeLabel() }}
       </div>
-      }
-    </div>
-  </div>
-  } @if (isRevealed && numericVotes.length > 0) {
-  <div class="vote-summary fade-in-delayed-2s">
-    <div class="extreme-vote">
-      Lowest:
-      <div [@voteReveal]>
-        <strong>&nbsp;{{ lowestVote }}</strong>
-      </div>
-    </div>
-    <div class="extreme-vote">
-      Highest:
-      <div [@voteReveal]>
-        <strong>&nbsp;{{ highestVote }}</strong>
-      </div>
-    </div>
-  </div>
-  }
-
-  <div class="button-wrapper fade-in-delayed-2s">
-    @if (currentParticipant?.isOwner) { @if (isRevealed) {
-    <button (click)="start()">Start</button>
     } @else {
-    <button (click)="reveal()">Reveal</button>
-    }}
-    <button (click)="getJoinLink()">Copy link</button>
-  </div>
-</div>
-@if (currentParticipant?.isOwner) {
-<div
-  class="settings-dropdown-container"
-  (clickOutside)="isDropdownOpen = false"
->
-  <button class="settings-button" (click)="isDropdownOpen = !isDropdownOpen">
-    ⚙️
-  </button>
+      <div class="players-count">👥 {{ participants().length }}</div>
+    }
+  </header>
 
-  @if (isDropdownOpen) {
-  <div class="dropdown-menu">
-    <button (click)="setLocationType('da'); isDropdownOpen = false">
-      Dansk
-    </button>
-    <button (click)="setLocationType('en'); isDropdownOpen = false">
-      English
-    </button>
-  </div>
+  @if (actionError()) {
+    <p class="banner-error pop-in">{{ actionError() }}</p>
   }
-</div>
-}
+
+  @switch (status()) {
+
+    <!-- ============================ LOBBY ============================ -->
+    @case ('lobby') {
+      <div class="lobby">
+        <div class="glass panel">
+          <h2>{{ t().lobby }}</h2>
+          <p class="muted">
+            {{ t().shareBefore }}<strong>{{ t().players3 }}</strong>{{ t().shareAfter }}
+          </p>
+
+          <div class="share">
+            <button class="btn btn-ghost" (click)="copyLink()">
+              🔗 {{ copied() ? t().linkCopied : t().copyLink }}
+            </button>
+          </div>
+
+          @if (isHost()) {
+            <div class="lang-toggle">
+              <span class="muted">{{ t().locationsLabel }}</span>
+              <button
+                class="pill"
+                [class.on]="language() === 'en'"
+                (click)="setLanguage('en')"
+              >EN</button>
+              <button
+                class="pill"
+                [class.on]="language() === 'da'"
+                (click)="setLanguage('da')"
+              >DA</button>
+            </div>
+          }
+        </div>
+
+        <div class="glass panel">
+          <h3>{{ t().playersHeading }} <span class="count">{{ participants().length }}</span></h3>
+          <div class="players">
+            @for (p of participants(); track p.id) {
+              <app-participant-card
+                [participant]="p"
+                [isMe]="p.id === myId()"
+              />
+            }
+          </div>
+        </div>
+
+        @if (isHost()) {
+          <button
+            class="btn btn-primary big"
+            [disabled]="!canStart()"
+            (click)="start()"
+          >
+            {{ canStart() ? t().startGame : t().waitingForPlayers }}
+          </button>
+        } @else {
+          <p class="waiting glass">{{ t().waitingHostStart }}</p>
+        }
+      </div>
+    }
+
+    <!-- ============================ PLAYING ============================ -->
+    @case ('playing') {
+      <div class="playing">
+        <!-- Role card -->
+        <div
+          class="role-card"
+          [class.revealed]="roleRevealed()"
+          [class.spy]="amSpy()"
+          (click)="toggleRole()"
+        >
+          <div class="role-inner">
+            <div class="role-front">
+              <span class="tap-eye">🕵️</span>
+              <span class="tap-text">{{ t().tapReveal }}</span>
+              <span class="tap-sub">{{ t().keepHidden }}</span>
+            </div>
+            <div class="role-back">
+              @if (amSpy()) {
+                <span class="spy-emoji">🎭</span>
+                <span class="spy-title">{{ t().youAreSpy }}</span>
+                <span class="spy-text">
+                  {{ t().spyInstructions }}
+                </span>
+              } @else {
+                <span class="loc-emoji">{{ location()?.emoji }}</span>
+                <span class="loc-name">{{ location()?.names?.[language()] }}</span>
+                <span class="civ-badge">{{ civilianLabel() }}</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Spy actions -->
+        @if (amSpy()) {
+          <button class="btn btn-danger" (click)="showGuess.set(true)">
+            {{ t().guessLocation }}
+          </button>
+        }
+
+        <!-- Locations reference -->
+        <div class="glass panel">
+          <h3>{{ t().possibleLocations }}</h3>
+          <p class="muted small">{{ t().crossOffHint }}</p>
+          <div class="loc-grid">
+            @for (loc of locationList(); track loc.id) {
+              <button
+                class="loc-tile"
+                [class.crossed]="isCrossed(loc.id)"
+                (click)="toggleCross(loc.id)"
+              >
+                <span class="loc-tile-emoji">{{ loc.emoji }}</span>
+                <span class="loc-tile-name">{{ loc.name }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Players -->
+        <div class="glass panel">
+          <h3>
+            {{ t().playersHeading }} <span class="count">{{ participants().length }}</span>
+            <span class="ready-count">{{ readyCount() }}/{{ participants().length }} {{ t().readySuffix }}</span>
+          </h3>
+          <div class="players">
+            @for (p of participants(); track p.id) {
+              <app-participant-card
+                [participant]="p"
+                [isMe]="p.id === myId()"
+                [hasVoted]="isReady(p.id)"
+              />
+            }
+          </div>
+        </div>
+
+        <!-- Ready to vote (each player decides; vote starts when all ready) -->
+        <button
+          class="btn big"
+          [class.btn-gold]="!myReady()"
+          [class.btn-ghost]="myReady()"
+          (click)="toggleReady()"
+        >
+          {{ myReady() ? t().readyCancel : t().readyToVote }}
+        </button>
+        @if (readyCount() > 0 && readyCount() < participants().length) {
+          <p class="ready-hint">
+            {{ t().waitingEveryone }} {{ readyCount() }}/{{ participants().length }} {{ t().readySuffix }}
+          </p>
+        }
+      </div>
+    }
+
+    <!-- ============================ VOTING ============================ -->
+    @case ('voting') {
+      <div class="voting">
+        <div class="glass panel center">
+          <h2>{{ t().whoIsSpy }}</h2>
+          <p class="muted">
+            {{ t().voteHint }}
+          </p>
+          <div class="vote-progress">
+            {{ votesCast() }} / {{ participants().length }} {{ t().votedSuffix }}
+          </div>
+        </div>
+
+        @if (amSpy()) {
+          <button class="btn btn-danger" (click)="showGuess.set(true)">
+            {{ t().guessInstead }}
+          </button>
+        }
+
+        <div class="players vote-list">
+          @for (p of participants(); track p.id) {
+            <app-participant-card
+              [participant]="p"
+              [isMe]="p.id === myId()"
+              [selectable]="p.id !== myId()"
+              [selected]="myVote() === p.id"
+              [hasVoted]="hasVoted(p.id)"
+              (click)="vote(p.id)"
+            />
+          }
+        </div>
+
+        <p class="waiting glass">
+          {{ t().autoRevealHint }}
+        </p>
+      </div>
+    }
+
+    <!-- ============================ REVEALED ============================ -->
+    @case ('revealed') {
+      <div class="revealed">
+        <div
+          class="glass outcome pop-in"
+          [class.win]="outcomeInfo().win"
+          [class.lose]="!outcomeInfo().win"
+        >
+          <span class="outcome-emoji">{{ outcomeInfo().emoji }}</span>
+          <h2>{{ outcomeInfo().title }}</h2>
+          <p>{{ outcomeInfo().text }}</p>
+
+          <div class="reveal-facts">
+            <div class="fact">
+              <span class="fact-label">{{ t().theSpyWas }}</span>
+              <span class="fact-value">🎭 {{ spy()?.name }}</span>
+            </div>
+            <div class="fact">
+              <span class="fact-label">{{ t().theLocationWas }}</span>
+              <span class="fact-value">
+                {{ location()?.emoji }} {{ location()?.names?.[language()] }}
+              </span>
+            </div>
+            @if (session()?.round?.spyGuess) {
+              <div class="fact">
+                <span class="fact-label">{{ t().spyGuessed }}</span>
+                <span class="fact-value">{{ guessName() }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="glass panel">
+          <h3>{{ t().everyonesRole }}</h3>
+          <div class="players">
+            @for (p of participants(); track p.id) {
+              <app-participant-card
+                [participant]="p"
+                [isMe]="p.id === myId()"
+                [revealRoles]="true"
+                [roleText]="roleTextFor(p)"
+                [voteCount]="voteCountFor(p.id)"
+              />
+            }
+          </div>
+        </div>
+
+        @if (isHost()) {
+          <button class="btn btn-primary big" (click)="newRound()">
+            {{ t().newRound }}
+          </button>
+          <button class="btn btn-ghost" (click)="toLobby()">
+            {{ t().backToLobby }}
+          </button>
+        } @else {
+          <p class="waiting glass">{{ t().waitingHostRound }}</p>
+        }
+      </div>
+    }
+  }
+
+  <!-- ==================== Spy guess overlay ==================== -->
+  @if (showGuess()) {
+    <div class="overlay" (click)="showGuess.set(false)">
+      <div class="glass guess-modal pop-in" (click)="$event.stopPropagation()">
+        <div class="guess-head">
+          <h3>{{ t().guessTheLocation }}</h3>
+          <button class="icon-btn" (click)="showGuess.set(false)">✕</button>
+        </div>
+        <p class="muted small">{{ t().guessCareful }}</p>
+        <div class="loc-grid">
+          @for (loc of locationList(); track loc.id) {
+            <button class="loc-tile guess" (click)="guess(loc.id)">
+              <span class="loc-tile-emoji">{{ loc.emoji }}</span>
+              <span class="loc-tile-name">{{ loc.name }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ==================== Phase transition ==================== -->
+  @if (phaseFx()) {
+    <div class="phase-fx" [class.to-vote]="phaseFx() === 'to-vote'" [class.to-board]="phaseFx() === 'to-board'">
+      <div class="phase-inner">
+        @if (phaseFx() === 'to-vote') {
+          <span class="phase-emoji">🗳️</span>
+          <span class="phase-text">{{ t().timeToVote }}</span>
+          <span class="phase-sub">{{ t().whoIsSpySub }}</span>
+        } @else {
+          <span class="phase-emoji">🕵️</span>
+          <span class="phase-text">{{ t().backToField }}</span>
+          <span class="phase-sub">{{ t().keepInvestigating }}</span>
+        }
+      </div>
+    </div>
+  }
+</section>

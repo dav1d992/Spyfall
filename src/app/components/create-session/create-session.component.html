@@ -1,9 +1,116 @@
-<div class="create-section">
-  <h2 class="typewriter">Create a Spyfall Room</h2>
-  <input
-    class="fade-in-delayed-2s"
-    [(ngModel)]="name"
-    placeholder="Your name"
-  />
-  <button class="fade-in-delayed-2s" (click)="create()">Create</button>
-</div>
+<section class="home fade-up">
+  <header class="hero">
+    <div class="badge">🕵️ Social deduction</div>
+    <h1 class="title">
+      <span class="gradient-text">SPYFALL</span>
+    </h1>
+    <p class="tagline">
+      One of you is the spy. Everyone else knows the location.
+      Ask clever questions, expose the impostor — or blend in and survive.
+    </p>
+  </header>
+
+  <div class="glass card">
+    <div class="tabs">
+      <button
+        type="button"
+        class="tab"
+        [class.active]="mode() === 'create'"
+        (click)="setMode('create')"
+      >
+        Create room
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.active]="mode() === 'join'"
+        (click)="setMode('join')"
+      >
+        Join room
+      </button>
+    </div>
+
+    <label class="field">
+      <span>Your name</span>
+      <input
+        [(ngModel)]="name"
+        placeholder="e.g. Agent Nova"
+        maxlength="16"
+        autocomplete="off"
+        (keyup.enter)="mode() === 'create' ? create() : join()"
+      />
+    </label>
+
+    @if (mode() === 'create') {
+      <div class="field">
+        <span>Language of locations</span>
+        <div class="dropdown" [class.open]="langOpen()">
+          <button
+            type="button"
+            class="dropdown-trigger"
+            (click)="toggleLang()"
+          >
+            <span>{{ languageLabel }}</span>
+            <span class="chevron">▾</span>
+          </button>
+          @if (langOpen()) {
+            <ul class="dropdown-menu pop-in">
+              @for (lang of languages; track lang.value) {
+                <li>
+                  <button
+                    type="button"
+                    class="dropdown-option"
+                    [class.selected]="language === lang.value"
+                    (click)="selectLang(lang.value)"
+                  >
+                    <span>{{ lang.label }}</span>
+                    @if (language === lang.value) {
+                      <span class="check">✓</span>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+            <div class="dropdown-backdrop" (click)="langOpen.set(false)"></div>
+          }
+        </div>
+      </div>
+
+      <button
+        class="btn btn-primary"
+        [disabled]="!name.trim() || busy()"
+        (click)="create()"
+      >
+        {{ busy() ? 'Creating…' : 'Create room' }}
+      </button>
+    } @else {
+      <label class="field">
+        <span>Room code</span>
+        <input
+          [(ngModel)]="roomCode"
+          placeholder="Paste the room code"
+          autocomplete="off"
+          (keyup.enter)="join()"
+        />
+      </label>
+
+      <button
+        class="btn btn-primary"
+        [disabled]="!name.trim() || !roomCode.trim() || busy()"
+        (click)="join()"
+      >
+        {{ busy() ? 'Joining…' : 'Join room' }}
+      </button>
+    }
+
+    @if (error()) {
+      <p class="error pop-in">{{ error() }}</p>
+    }
+  </div>
+
+  <ol class="how glass">
+    <li><strong>Gather</strong> 3+ friends, each on their own phone.</li>
+    <li><strong>Create</strong> a room and share the link or code.</li>
+    <li><strong>Play</strong> — find the spy before time runs out!</li>
+  </ol>
+</section>

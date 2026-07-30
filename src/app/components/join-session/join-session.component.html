@@ -1,10 +1,39 @@
-<div class="join-section">
-  <h2 class="typewriter">Join Session</h2>
-  <input
-    class="fade-in-delayed-2s"
-    [(ngModel)]="name"
-    placeholder="Your name"
-    maxlength="9"
-  />
-  <button class="fade-in-delayed-2s" (click)="join()">Join</button>
-</div>
+<section class="join fade-up">
+  <div class="glass card">
+    <div class="badge">🕵️ Spyfall</div>
+
+    @if (checking()) {
+      <p class="status">Checking room…</p>
+    } @else if (notFound()) {
+      <h2>Room not found</h2>
+      <p class="status">This room may have closed or the link is wrong.</p>
+      <button class="btn btn-primary" (click)="goHome()">Go home</button>
+    } @else {
+      <h2>Join the game</h2>
+      <p class="status">Pick a name your friends will recognise.</p>
+
+      <label class="field">
+        <span>Your name</span>
+        <input
+          [(ngModel)]="name"
+          placeholder="e.g. Agent Nova"
+          maxlength="16"
+          autocomplete="off"
+          (keyup.enter)="join()"
+        />
+      </label>
+
+      <button
+        class="btn btn-primary"
+        [disabled]="!name.trim() || busy()"
+        (click)="join()"
+      >
+        {{ busy() ? 'Joining…' : 'Enter room' }}
+      </button>
+
+      @if (error()) {
+        <p class="error pop-in">{{ error() }}</p>
+      }
+    }
+  </div>
+</section>

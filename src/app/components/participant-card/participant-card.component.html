@@ -1,10 +1,45 @@
-<div class="participant-card" [class.highlighted]="isHighlighted()">
-  <h3>{{ participant().name }}</h3>
-  @if (isRevealed()) { :
-  <div [@voteReveal]>
-    &nbsp;<strong>{{ participant().votedBy?.length ?? "" }}</strong>
+<div
+  class="chip"
+  [class.selectable]="selectable()"
+  [class.selected]="selected()"
+  [class.is-me]="isMe()"
+  [class.spy]="revealRoles() && participant().isSpy"
+>
+  <div class="avatar">
+    <span>{{ initials }}</span>
+    @if (participant().isHost) {
+      <span class="crown" title="Host">👑</span>
+    }
   </div>
-  } @else {
-  <p>{{ participant().hasVoted ? ": ✅" : ": ⌛" }}</p>
-  }
+
+  <div class="info">
+    <div class="name-row">
+      <span class="name">{{ participant().name }}</span>
+      @if (isMe()) { <span class="you">you</span> }
+    </div>
+
+    @if (revealRoles()) {
+      @if (participant().isSpy) {
+        <span class="role spy-role">🕵️ The Spy</span>
+      } @else {
+        <span class="role">{{ roleText() }}</span>
+      }
+    } @else if (voteCount() !== null) {
+      <span class="role subtle">
+        {{ voteCount() }} {{ voteCount() === 1 ? 'vote' : 'votes' }}
+      </span>
+    }
+  </div>
+
+  <div class="trailing">
+    @if (revealRoles()) {
+      @if (voteCount() !== null && voteCount()! > 0) {
+        <span class="tally">{{ voteCount() }}</span>
+      }
+    } @else if (selected()) {
+      <span class="check">✓</span>
+    } @else if (hasVoted()) {
+      <span class="dot" title="Has voted"></span>
+    }
+  </div>
 </div>

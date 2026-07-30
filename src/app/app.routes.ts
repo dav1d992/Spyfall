@@ -4,7 +4,16 @@ import { JoinSessionComponent } from './components/join-session/join-session.com
 import { GameBoardComponent } from './components/game-board/game-board.component';
 
 export const routes: Routes = [
-  { path: '', component: CreateSessionComponent },
-  { path: 'join/:sessionId', component: JoinSessionComponent },
-  { path: 'session/:sessionId', component: GameBoardComponent },
+  { path: '', component: CreateSessionComponent, title: 'Spyfall' },
+  {
+    path: 'join/:sessionId',
+    component: JoinSessionComponent,
+    title: 'Join · Spyfall',
+  },
+  {
+    path: 'session/:sessionId',
+    component: GameBoardComponent,
+    title: 'Game · Spyfall',
+  },
+  { path: '**', redirectTo: '' },
 ];

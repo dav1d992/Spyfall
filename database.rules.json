@@ -1,6 +1,61 @@
 {
   "rules": {
-    ".read": "true",
-    ".write": "true"
+    ".read": false,
+    ".write": false,
+
+    "sessions": {
+      "$sessionId": {
+        // A room is readable/writable by anyone who knows its (unguessable)
+        // push-id. Listing the whole "sessions" node is denied, so nobody can
+        // enumerate or bulk-download every room.
+        ".read": true,
+        ".write": true,
+
+        // A room may only be created with the required top-level fields, or
+        // deleted entirely (cleanup). This blocks writing arbitrary junk.
+        ".validate": "!newData.exists() || newData.hasChildren(['hostId', 'status', 'language', 'createdAt'])",
+
+        "hostId": { ".validate": "newData.isString() && newData.val().length <= 64" },
+        "status": { ".validate": "newData.isString() && newData.val().matches(/^(lobby|playing|voting|revealed)$/)" },
+        "language": { ".validate": "newData.isString() && newData.val().matches(/^(en|da)$/)" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+
+        "round": {
+          ".validate": "newData.hasChildren(['locationId', 'spyId', 'startedAt', 'durationSec'])",
+          "locationId": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "spyId": { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "startedAt": { ".validate": "newData.isNumber()" },
+          "durationSec": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600" },
+          "outcome": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "spyGuess": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "$other": { ".validate": false }
+        },
+
+        "participants": {
+          "$participantId": {
+            // Cap the room at 15 players: a brand-new participant is only
+            // allowed if the room currently has fewer than 15. Updates to an
+            // existing participant (e.g. the spy flag) are always allowed.
+            ".validate": "newData.hasChildren(['id', 'name', 'isHost', 'isSpy', 'joinedAt']) && (data.exists() || root.child('sessions').child($sessionId).child('participants').numChildren() < 15)",
+            "id": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "name": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
+            "isHost": { ".validate": "newData.isBoolean()" },
+            "isSpy": { ".validate": "newData.isBoolean()" },
+            "joinedAt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "votes": {
+          "$voterId": { ".validate": "newData.isString() && newData.val().length <= 64" }
+        },
+
+        "ready": {
+          "$participantId": { ".validate": "newData.isBoolean()" }
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
   }
 }
