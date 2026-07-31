@@ -34,7 +34,6 @@
       <span>Your name</span>
       <input
         [(ngModel)]="name"
-        placeholder="e.g. Agent Nova"
         maxlength="16"
         autocomplete="off"
         (keyup.enter)="mode() === 'create' ? create() : join()"
@@ -43,7 +42,7 @@
 
     @if (mode() === 'create') {
       <div class="field">
-        <span>Language of locations</span>
+        <span>Room language</span>
         <div class="dropdown" [class.open]="langOpen()">
           <button
             type="button"
