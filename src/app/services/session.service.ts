@@ -7,7 +7,6 @@ import {
   get,
   remove,
   onValue,
-  onDisconnect,
 } from 'firebase/database';
 import { Observable } from 'rxjs';
 import { FIREBASE_DB } from '../core/firebase';
@@ -180,24 +179,63 @@ export class SessionService {
   }
 
   /**
-   * Auto-remove this participant if their tab closes or the connection drops.
-   * This keeps abandoned rooms from lingering and eating storage/quota.
+   * Record that this participant is still around. Called periodically while the
+   * game board is open. We deliberately do NOT drop players the instant their
+   * connection blips (e.g. switching to Messenger to share the invite link);
+   * instead the host prunes players who have been silent for a while.
    */
-  setupPresence(sessionId: string, participantId: string): void {
-    const pRef = ref(
-      this.db,
-      `sessions/${sessionId}/participants/${participantId}`,
-    );
-    onDisconnect(pRef).remove().catch(() => {});
+  async touch(sessionId: string, participantId: string): Promise<void> {
+    await set(
+      ref(this.db, `sessions/${sessionId}/participants/${participantId}/lastSeen`),
+      Date.now(),
+    ).catch(() => {});
   }
 
-  /** Cancel a queued auto-removal (used for a clean, intentional leave). */
-  cancelPresence(sessionId: string, participantId: string): void {
-    const pRef = ref(
-      this.db,
-      `sessions/${sessionId}/participants/${participantId}`,
+  /**
+   * Remove players who haven't checked in within the grace window (they closed
+   * the tab or lost connection for good). Never prunes the caller. Hands off
+   * host duties if the host was the one who went away, and deletes the room if
+   * nobody active is left.
+   */
+  async pruneInactive(
+    sessionId: string,
+    selfId: string,
+    graceMs = 120000,
+  ): Promise<void> {
+    const snap = await get(ref(this.db, `sessions/${sessionId}`));
+    const session = snap.val() as Session | null;
+    if (!session?.participants) return;
+
+    const participants = session.participants;
+    const ids = Object.keys(participants);
+    const cutoff = Date.now() - graceMs;
+    const stale = ids.filter(
+      (id) =>
+        id !== selfId &&
+        (participants[id].lastSeen ?? participants[id].joinedAt) < cutoff,
     );
-    onDisconnect(pRef).cancel().catch(() => {});
+    if (stale.length === 0) return;
+
+    const survivors = ids.filter((id) => !stale.includes(id));
+    if (survivors.length === 0) {
+      await remove(ref(this.db, `sessions/${sessionId}`)).catch(() => {});
+      return;
+    }
+
+    const updates: Record<string, unknown> = {};
+    for (const id of stale) {
+      updates[`sessions/${sessionId}/participants/${id}`] = null;
+      updates[`sessions/${sessionId}/votes/${id}`] = null;
+      updates[`sessions/${sessionId}/ready/${id}`] = null;
+    }
+    if (stale.includes(session.hostId)) {
+      const newHostId = survivors.sort(
+        (a, b) => participants[a].joinedAt - participants[b].joinedAt,
+      )[0];
+      updates[`sessions/${sessionId}/hostId`] = newHostId;
+      updates[`sessions/${sessionId}/participants/${newHostId}/isHost`] = true;
+    }
+    await update(ref(this.db), updates).catch(() => {});
   }
 
   /** Delete the whole room if no participants remain (cleans up shells). */

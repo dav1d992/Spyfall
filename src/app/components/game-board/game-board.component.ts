@@ -37,6 +37,7 @@ export class GameBoardComponent implements OnInit, OnDestroy {
 
   private sub?: Subscription;
   private ticker?: ReturnType<typeof setInterval>;
+  private heartbeat?: ReturnType<typeof setInterval>;
   private lastRoundKey = '';
   private lastStatusSeen = '';
   private phaseTimer?: ReturnType<typeof setTimeout>;
@@ -139,8 +140,15 @@ export class GameBoardComponent implements OnInit, OnDestroy {
     }
     this.myId.set(myId);
 
-    // Auto-remove us from the room if the tab closes / we lose connection.
-    this.service.setupPresence(id, myId);
+    // Presence: check in now and periodically so we can tell who is still
+    // around. We no longer drop players the instant their connection blips
+    // (e.g. switching to Messenger to share the invite link). Instead, any
+    // client prunes players who have been silent past the grace window.
+    this.service.touch(id, myId);
+    this.heartbeat = setInterval(() => {
+      this.service.touch(id, myId);
+      this.service.pruneInactive(id, myId).catch(() => {});
+    }, 30000);
 
     this.sub = this.service.watchSession(id).subscribe((session) => {
       if (!session) {
@@ -165,6 +173,7 @@ export class GameBoardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     if (this.ticker) clearInterval(this.ticker);
+    if (this.heartbeat) clearInterval(this.heartbeat);
     if (this.phaseTimer) clearTimeout(this.phaseTimer);
   }
 
@@ -351,7 +360,6 @@ export class GameBoardComponent implements OnInit, OnDestroy {
 
   async leave(): Promise<void> {
     const id = this.sessionId();
-    this.service.cancelPresence(id, this.myId());
     await this.service.leaveSession(id, this.myId());
     this.router.navigate(['/']);
   }

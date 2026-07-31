@@ -42,6 +42,7 @@
             "isHost": { ".validate": "newData.isBoolean()" },
             "isSpy": { ".validate": "newData.isBoolean()" },
             "joinedAt": { ".validate": "newData.isNumber()" },
+            "lastSeen": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }
           }
         },

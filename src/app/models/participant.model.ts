@@ -18,6 +18,8 @@ export interface Participant {
   isHost: boolean;
   isSpy: boolean;
   joinedAt: number;
+  /** Timestamp of the player's last check-in (presence heartbeat). */
+  lastSeen?: number;
 }
 
 /** The current round's secret information + progress. */
