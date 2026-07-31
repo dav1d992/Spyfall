@@ -215,7 +215,7 @@ export class SessionService {
   // ---------------------------------------------------------------------------
 
   /** Assign a random location, a random spy and unique roles, then start. */
-  async startRound(sessionId: string, durationSec = 480): Promise<void> {
+  async startRound(sessionId: string, durationSec = 720): Promise<void> {
     const snapshot = await get(
       ref(this.db, `sessions/${sessionId}/participants`),
     );
