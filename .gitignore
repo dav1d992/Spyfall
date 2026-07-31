@@ -69,4 +69,6 @@ yarn-error.log*
 
 # Environment files (local configs)
 /.env.*
-/src/environments/
+# NOTE: src/environments/environment.ts is intentionally committed so CI can
+# build. Firebase web config values are not secret (security is enforced by
+# database rules).
